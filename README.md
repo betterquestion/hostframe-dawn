@@ -75,6 +75,13 @@ headers and Xvfb:
 sudo dnf install libX11-devel xorg-x11-server-Xvfb vulkan-tools
 ```
 
+Run `bun run test:surface` after setup and build. The runner starts its own
+Xvfb display. The native fixture creates the X11 window, requests a compatible
+adapter through the bridge, and hands JavaScript an acquired Dawn
+`GPUTexture`. The test clears it to magenta, presents it, and checks every
+window pixel. The fixture releases the surface and drains deferred Dawn
+cleanup before closing the display. Both Node and Bun must exit successfully.
+
 ## Validate before integrating with Hostframe
 
 Use a small native test addon as the first consumer of the public C interface.

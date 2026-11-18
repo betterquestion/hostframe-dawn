@@ -1,34 +1,16 @@
-#include "hostframe_dawn/bridge.h"
+#include "bridge-loader.h"
 
-#include <dlfcn.h>
-#include <napi.h>
+#ifdef HOSTFRAME_DAWN_X11
+#include "x11-surface.h"
+#endif
 
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <memory>
-#include <string>
 
 namespace {
-using Library = std::unique_ptr<void, decltype(&dlclose)>;
-
-Library OpenAddon(Napi::Env env, Napi::Value path_arg) {
-  const auto path = path_arg.As<Napi::String>().Utf8Value();
-  Library library(dlopen(path.c_str(), RTLD_NOW | RTLD_NOLOAD), dlclose);
-  if (!library) {
-    throw Napi::Error::New(env, "Dawn addon must be loaded before ABI negotiation");
-  }
-  return library;
-}
-
-const HostframeDawnApi* GetApi(Napi::Env env, const Library& library, uint32_t version) {
-  const auto get_api = reinterpret_cast<decltype(&hostframe_dawn_get_api)>(
-      dlsym(library.get(), "hostframe_dawn_get_api"));
-  if (!get_api) {
-    throw Napi::Error::New(env, "Dawn addon does not export hostframe_dawn_get_api");
-  }
-  return get_api(version);
-}
+using fixture::GetApi;
+using fixture::OpenAddon;
 
 Napi::Value Negotiate(const Napi::CallbackInfo& info) {
   const auto env = info.Env();
@@ -102,6 +84,9 @@ Napi::Object Initialize(Napi::Env env, Napi::Object exports) {
   exports.Set("compareDevices", Napi::Function::New(
       env, CompareHandles<&HostframeDawnApi::acquire_device, &HostframeDawnApi::release_device>));
   exports.Set("foreignWrapper", Napi::Function::New(env, ForeignWrapper));
+#ifdef HOSTFRAME_DAWN_X11
+  fixture::ExportX11Surface(env, exports);
+#endif
   return exports;
 }
 }

@@ -1,7 +1,8 @@
-export async function runInRuntimes(label: string, args: string[]) {
+export async function runInRuntimes(label: string, args: string[], env = process.env) {
   for(const [name, executable] of [["Node", "node"], ["Bun", process.execPath]]) {
     console.log(`Testing ${label} in ${name}`);
     const child = Bun.spawn([executable, ...args], {
+      env,
       stdout: "inherit",
       stderr: "inherit"
     });

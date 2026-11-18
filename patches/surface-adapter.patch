@@ -1,0 +1,82 @@
+--- a/src/dawn/node/binding/GPU.h
++++ b/src/dawn/node/binding/GPU.h
+@@ -45,6 +45,9 @@
+     explicit GPU(Flags flags);
+     WGPUInstance GetNativeInstance() const { return instance_->Get(); }
+
++    interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>> RequestAdapterForSurface(
++        Napi::Env env, interop::GPURequestAdapterOptions options, WGPUSurface surface);
++
+     // interop::GPU interface compliance
+     interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>> requestAdapter(
+         Napi::Env env,
+--- a/src/dawn/node/binding/GPU.cpp
++++ b/src/dawn/node/binding/GPU.cpp
+@@ -129,6 +129,11 @@
+ interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>> GPU::requestAdapter(
+     Napi::Env env,
+     interop::GPURequestAdapterOptions options) {
++    return RequestAdapterForSurface(env, std::move(options), nullptr);
++}
++
++interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>> GPU::RequestAdapterForSurface(
++    Napi::Env env, interop::GPURequestAdapterOptions options, WGPUSurface surface) {
+     auto promise =
+         interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>>(env, PROMISE_INFO);
+
+@@ -231,11 +236,24 @@
+             continue;
+         }
+
++        // EnumerateAdapters does not filter on compatibleSurface.
++        if (surface) {
++            wgpu::SurfaceCapabilities capabilities;
++            if (wgpu::Surface(surface).GetCapabilities(a, &capabilities) != wgpu::Status::Success ||
++                capabilities.formatCount == 0) {
++                continue;
++            }
++        }
++
+         adapter = &a;
+         break;
+     }
+
+     if (!adapter) {
++        if (surface) {
++            promise.Resolve({});
++            return promise;
++        }
+         std::stringstream msg;
+         if (!forceBackend.empty() || deviceName.empty()) {
+             msg << "no adapter ";
+--- a/src/dawn/node/interop/WebGPU.cpp.tmpl
++++ b/src/dawn/node/interop/WebGPU.cpp.tmpl
+@@ -392,9 +392,27 @@
+ {{-    if $.Inherits}}{{template "DictionaryMembersFromJS" (Lookup $.Inherits)}}{{end}}
+ {{-    range $i, $m := $.Members}}
+   {{/* indent */}}
++{{- if eq $.Name "GPURequestAdapterOptions"}}
++  napi_value member_{{$m.Name}};
++  if (napi_get_named_property(env, object, "{{$m.Name}}", &member_{{$m.Name}}) != napi_ok) {
++    return Error("Could not read adapter option {{$m.Name}}");
++  }
++{{- if or (eq $m.Name "featureLevel") (eq $m.Name "powerPreference")}}
++  napi_valuetype type_{{$m.Name}};
++  if (napi_typeof(env, member_{{$m.Name}}, &type_{{$m.Name}}) != napi_ok ||
++      (type_{{$m.Name}} != napi_undefined && type_{{$m.Name}} != napi_null &&
++       napi_coerce_to_string(env, member_{{$m.Name}}, &member_{{$m.Name}}) != napi_ok)) {
++    return Error("Could not convert adapter option {{$m.Name}} to a string");
++  }
++{{- end}}
++{{-      if   $m.Init }}res = interop::FromJSOptional(env, Napi::Value(env, member_{{$m.Name}}), out.{{$m.Name}});
++{{-      else         }}res = interop::FromJS(env, Napi::Value(env, member_{{$m.Name}}), out.{{$m.Name}});
++{{-      end}}
++{{- else}}
+ {{-      if   $m.Init }}res = interop::FromJSOptional(env, object.Get("{{$m.Name}}"), out.{{$m.Name}});
+ {{-      else         }}res = interop::FromJS(env, object.Get("{{$m.Name}}"), out.{{$m.Name}});
+-{{-      end          }}
++{{-      end}}
++{{- end}}
+   if (!res) {
+     return res.Append("while converting member '{{$m.Name}}'");
+   }

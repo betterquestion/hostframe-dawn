@@ -91,7 +91,15 @@ set_target_properties(dawn_abi_fixture PROPERTIES
 )
 target_include_directories(dawn_abi_fixture PRIVATE include)
 target_include_directories(dawn_abi_fixture SYSTEM PRIVATE
+  "${dawn_headers}"
   "${dawn_source}/third_party/node-addon-api"
   "${dawn_source}/third_party/node-api-headers/include"
 )
 target_link_libraries(dawn_abi_fixture PRIVATE ${CMAKE_DL_LIBS})
+
+find_package(X11 QUIET)
+if(X11_FOUND)
+  target_sources(dawn_abi_fixture PRIVATE test/x11-surface.cpp)
+  target_compile_definitions(dawn_abi_fixture PRIVATE HOSTFRAME_DAWN_X11)
+  target_link_libraries(dawn_abi_fixture PRIVATE X11::X11 Threads::Threads)
+endif()

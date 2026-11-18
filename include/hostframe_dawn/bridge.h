@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <node_api.h>
+#include <webgpu/webgpu.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,42 @@ typedef struct HostframeDawnApi {
   HostframeDawnDevice (*acquire_device)(napi_env env, napi_value device);
   void (*release_instance)(HostframeDawnInstance instance);
   void (*release_device)(HostframeDawnDevice device);
+
+  /*
+   * JavaScript-thread operations. All raw Dawn handles must belong to this
+   * loaded addon; the GPU and surface must share an instance. Adapter options
+   * may be NULL. A successful request returns a Promise for a compatible
+   * GPUAdapter or null. An exception from JavaScript remains pending.
+   * The wrapped texture must be an acquired frame from the given device.
+   * The wrapper retains its own reference; the caller still owns the input.
+   * The surface controls frame validity, including after presentation.
+   */
+  napi_status (*request_surface_adapter)(napi_env env, napi_value gpu, WGPUSurface surface,
+                                         napi_value options, napi_value* result);
+  napi_status (*wrap_surface_texture)(napi_env env, napi_value device, WGPUTexture texture,
+                                     napi_value* result);
+
+  /* Native presentation operations with the pinned WebGPU C signatures. */
+  WGPUProcInstanceCreateSurface create_surface;
+  WGPUProcSurfaceGetCapabilities surface_get_capabilities;
+  WGPUProcSurfaceCapabilitiesFreeMembers surface_capabilities_free_members;
+  WGPUProcDeviceGetAdapter device_get_adapter;
+  WGPUProcAdapterRelease release_adapter;
+  WGPUProcSurfaceConfigure surface_configure;
+  WGPUProcSurfaceGetCurrentTexture surface_get_current_texture;
+  WGPUProcSurfacePresent surface_present;
+  WGPUProcSurfaceUnconfigure surface_unconfigure;
+  WGPUProcSurfaceRelease release_surface;
+  WGPUProcTextureRelease release_texture;
+
+  /*
+   * After unconfiguring and releasing the surface, submit cleanup work while
+   * the display is still alive. This skips a lost device. Tick returns nonzero
+   * if more ticks are needed. The caller owns the deadline and fallback.
+   */
+  void (*submit_cleanup)(HostframeDawnInstance instance, HostframeDawnDevice device);
+  uint32_t (*device_tick)(HostframeDawnDevice device);
+  WGPUProcDeviceDestroy device_destroy;
 } HostframeDawnApi;
 
 /*

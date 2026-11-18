@@ -34,10 +34,12 @@
  {{-  end}}
  {{-  if and (IsInterface $) ($.Inherits) }}
      // This class inherits from another, require the class factory to
-@@ -424,11 +431,23 @@
+@@ -423,12 +430,28 @@
+ {{$.Name}}::{{$.Name}}() = default;
 
  {{-  if not (HasAnnotation $ "ManualImplementation")}}
- {{$.Name}}* {{$.Name}}::Unwrap(Napi::Object object) {
+-{{$.Name}}* {{$.Name}}::Unwrap(Napi::Object object) {
++{{$.Name}}* {{$.Name}}::Unwrap(Napi::Object object{{if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}, napi_env* owner{{end}}) {
 +{{- if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}
 +  const auto tag = Wrappers::W{{$.Name}}::BridgeTag();
 +  const auto env = object.Env();
@@ -47,7 +49,11 @@
 +      napi_unwrap(env, object, &wrapper) != napi_ok || !wrapper) {
 +    return nullptr;
 +  }
-+  return static_cast<Wrappers::W{{$.Name}}*>(wrapper)->impl.get();
++  auto* typed = static_cast<Wrappers::W{{$.Name}}*>(wrapper);
++  if (owner) {
++    *owner = typed->Env();
++  }
++  return typed->impl.get();
 +{{- else}}
    auto* wrappers = Wrappers::For(object.Env());
    if (!object.InstanceOf(wrappers->{{$.Name}}_ctor.Value())) {
@@ -58,7 +64,7 @@
  }
 
  Interface<{{$.Name}}> {{$.Name}}::Bind(Napi::Env env, std::unique_ptr<{{$.Name}}>&& impl) {
-@@ -437,5 +456,15 @@
+@@ -437,6 +460,16 @@
    auto object = wrappers->{{$.Name}}_ctor.New({
      Napi::External<void>::New(env, &kInternalConstructionMarker)
    });
@@ -74,3 +80,15 @@
 +{{- end}}
    auto* wrapper = Wrappers::W{{$.Name}}::Unwrap(object);
    wrapper->impl = std::move(impl);
+
+--- a/src/dawn/node/interop/WebGPU.h.tmpl
++++ b/src/dawn/node/interop/WebGPU.h.tmpl
+@@ -142,7 +142,7 @@
+ public:
+ {{-  if not (HasAnnotation $ "ManualImplementation")}}
+   static Interface<{{$.Name}}> Bind(Napi::Env, std::unique_ptr<{{$.Name}}>&&);
+-  static {{$.Name}}* Unwrap(Napi::Object);
++  static {{$.Name}}* Unwrap(Napi::Object{{if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}, napi_env* owner = nullptr{{end}});
+
+   template<typename T, typename ... ARGS>
+   static inline Interface<{{$.Name}}> Create(Napi::Env env, ARGS&& ... args) {
