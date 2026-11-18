@@ -43,6 +43,7 @@ endforeach()
 file(GLOB binding_sources CONFIGURE_DEPENDS "${node_source}/binding/*.cpp")
 list(REMOVE_ITEM binding_sources "${node_source}/binding/AsyncRunner.cpp")
 add_library(dawn MODULE
+  src/bridge.cpp
   "${patched}/src/dawn/node/Module.cpp"
   "${patched}/src/dawn/node/binding/AsyncRunner.cpp"
   "${node_source}/ManualConstructors.cpp"
@@ -61,6 +62,7 @@ set_target_properties(dawn PROPERTIES
   VISIBILITY_INLINES_HIDDEN ON
 )
 target_include_directories(dawn PRIVATE
+  include
   "${patched}"
   "${dawn_headers}"
   "${dawn_generated}"
@@ -76,3 +78,20 @@ target_compile_definitions(dawn PRIVATE DAWN_HAVE_UTILS_BUILD_CONFIG)
 # The engine's private dependencies can also be present in the host runtime.
 target_link_options(dawn PRIVATE "LINKER:--exclude-libs,ALL")
 target_link_libraries(dawn PRIVATE dawn_engine Threads::Threads ${CMAKE_DL_LIBS})
+
+add_library(dawn_abi_fixture MODULE EXCLUDE_FROM_ALL test/abi-fixture.cpp)
+set_target_properties(dawn_abi_fixture PROPERTIES
+  PREFIX ""
+  SUFFIX ".node"
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+)
+target_include_directories(dawn_abi_fixture PRIVATE include)
+target_include_directories(dawn_abi_fixture SYSTEM PRIVATE
+  "${dawn_source}/third_party/node-addon-api"
+  "${dawn_source}/third_party/node-api-headers/include"
+)
+target_link_libraries(dawn_abi_fixture PRIVATE ${CMAKE_DL_LIBS})

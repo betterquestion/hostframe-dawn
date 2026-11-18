@@ -60,6 +60,12 @@ Node and Bun processes and asserts the GPU readback in both.
 It requires a Vulkan driver. On Fedora, `sudo dnf install mesa-vulkan-drivers`
 provides Mesa's Vulkan drivers, including a software driver.
 
+Run `bun run test:abi` after building to check the C entry point in
+`include/hostframe_dawn/bridge.h`. The native fixture resolves
+`hostframe_dawn_get_api` from the `dawn.node` JavaScript loaded and checks
+version negotiation in Node and Bun. The v1 table currently reports its
+version and size.
+
 For the Linux/X11 presentation fixture, also install the X11 development
 headers and Xvfb:
 

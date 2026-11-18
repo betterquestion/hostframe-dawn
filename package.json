@@ -7,7 +7,8 @@
     "setup": "bun scripts/setup.ts",
     "lint": "oxlint scripts test",
     "build": "bun scripts/build.ts",
-    "test:compute": "bun scripts/test-compute.ts"
+    "test:compute": "bun scripts/test-compute.ts",
+    "test:abi": "bun scripts/test-abi.ts"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^6.0.1",
