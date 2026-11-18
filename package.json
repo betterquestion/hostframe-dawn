@@ -1,0 +1,14 @@
+{
+  "name": "hostframe-dawn",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "setup": "bun scripts/setup.ts",
+    "lint": "oxlint scripts"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^6.0.1",
+    "oxlint": "^1.94.0"
+  }
+}
