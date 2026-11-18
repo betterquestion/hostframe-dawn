@@ -1,10 +1,16 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import lock from "../dawn.lock.json";
 
 export const root = join(import.meta.dir, "..");
 export const build = join(root, "build");
 export const bindingPatches = ["bridge-wrappers.patch", "surface-adapter.patch"]
   .map(name => join(root, "patches", name));
+
+export async function testAddon(path = join(build, "native/dawn.node")) {
+  const addon = resolve(path);
+  if(!await Bun.file(addon).exists()) throw new Error(`Missing addon at ${addon}. Run bun run build or provide an addon path.`);
+  return addon;
+}
 
 export async function dawnInputs() {
   const hash = new Bun.CryptoHasher("sha256")

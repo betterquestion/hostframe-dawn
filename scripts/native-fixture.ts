@@ -7,6 +7,6 @@ export async function prepareFixture() {
   if(!await Bun.file(join(native, "CMakeCache.txt")).exists()) {
     throw new Error("Native build directory is missing. Run bun run build first.");
   }
-  await $`cmake --build ${native} --target dawn dawn_abi_fixture`;
-  return [join(native, "dawn.node"), join(native, "dawn_abi_fixture.node")];
+  await $`cmake --build ${native} --target dawn_abi_fixture`;
+  return join(native, "dawn_abi_fixture.node");
 }

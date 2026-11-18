@@ -82,6 +82,34 @@ adapter through the bridge, and hands JavaScript an acquired Dawn
 window pixel. The fixture releases the surface and drains deferred Dawn
 cleanup before closing the display. Both Node and Bun must exit successfully.
 
+## Linux package
+
+```sh
+bun setup
+bun run package
+bun run test:package
+```
+
+The archive and its SHA-256 checksum are written to `build/package/`. The
+archive contains `dawn.node`, the C bridge and its matching WebGPU and Node-API
+headers, dependency licenses, and metadata with the Dawn revision and ABI
+version. The package test verifies the checksum, extracts the archive, checks
+that the headers compile as C, and runs ABI, compute, and X11 presentation
+tests against the extracted binary.
+
+The Linux packaging workflow targets Ubuntu 24.04 x86-64 and uses Mesa's
+software Vulkan driver. Run the same job locally with Act and Docker:
+
+```sh
+act push -j linux-package \
+  -P ubuntu-24.04=catthehacker/ubuntu:act-24.04 \
+  --container-daemon-socket - \
+  --artifact-server-path "$PWD/build/act-artifacts"
+```
+
+GitHub Actions makes the archive and checksum available as a workflow artifact.
+Act stores the upload in the local artifact directory.
+
 ## Validate before integrating with Hostframe
 
 Use a small native test addon as the first consumer of the public C interface.

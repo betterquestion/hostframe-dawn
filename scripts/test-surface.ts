@@ -1,9 +1,10 @@
 import { join } from "node:path";
-import { root } from "./dawn-inputs";
+import { root, testAddon } from "./dawn-inputs";
 import { prepareFixture } from "./native-fixture";
 import { runInRuntimes } from "./run-in-runtimes";
 
-const addons = await prepareFixture();
+const addon = await testAddon(process.argv[2]);
+const fixture = await prepareFixture();
 const xvfb = Bun.which("Xvfb");
 if(!xvfb) throw new Error("Xvfb is required. See README.md for install instructions.");
 
@@ -25,7 +26,7 @@ try {
   if(!display || !/^\d+$/.test(display)) throw new Error("Xvfb did not start a display.");
 
   await runInRuntimes("Dawn X11 presentation", [
-    join(root, "test/surface.cjs"), ...addons
+    join(root, "test/surface.cjs"), addon, fixture
   ], { ...process.env, DISPLAY: `:${display}` });
 } finally {
   server.kill();

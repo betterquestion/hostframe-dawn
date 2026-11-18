@@ -9,7 +9,9 @@
     "build": "bun scripts/build.ts",
     "test:compute": "bun scripts/test-compute.ts",
     "test:abi": "bun scripts/test-abi.ts",
-    "test:surface": "bun scripts/test-surface.ts"
+    "test:surface": "bun scripts/test-surface.ts",
+    "package": "bun scripts/package.ts",
+    "test:package": "bun scripts/test-package.ts"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^6.0.1",
