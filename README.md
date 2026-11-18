@@ -47,11 +47,24 @@ pinned revisions. Setup prints the directory containing `source/`, `headers/`,
 same manifest. Downloads and generated files live under the ignored `build/`
 directory.
 
-For the Linux/X11 presentation fixture, install the X11 development headers,
-Xvfb, and a Vulkan driver. On Fedora with Mesa:
+Build the addon and run the windowless compute check with:
 
 ```sh
-sudo dnf install libX11-devel xorg-x11-server-Xvfb mesa-vulkan-drivers vulkan-tools
+bun run build
+bun run test:compute
+```
+
+The build applies `patches/dawn-node.patch` to a build-local copy and writes
+`build/native/dawn.node`. The compute check loads that same binary in fresh
+Node and Bun processes and asserts the GPU readback in both.
+It requires a Vulkan driver. On Fedora, `sudo dnf install mesa-vulkan-drivers`
+provides Mesa's Vulkan drivers, including a software driver.
+
+For the Linux/X11 presentation fixture, also install the X11 development
+headers and Xvfb:
+
+```sh
+sudo dnf install libX11-devel xorg-x11-server-Xvfb vulkan-tools
 ```
 
 ## Validate before integrating with Hostframe

@@ -2,9 +2,8 @@ import { $ } from "bun";
 import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import lock from "../dawn.lock.json";
+import { build, dawnInputs, root } from "./dawn-inputs";
 
-const root = join(import.meta.dir, "..");
-const build = join(root, "build");
 const downloads = join(build, "downloads");
 const inputs = [...lock.archives, ...lock.git];
 const generated = [
@@ -103,11 +102,7 @@ async function ready(directory: string) {
 }
 
 async function prepare() {
-  const digest = new Bun.CryptoHasher("sha256")
-    .update(JSON.stringify(lock))
-    .update(await Bun.file(import.meta.path).text())
-    .digest("hex").slice(0, 12);
-  const destination = join(build, `dawn-${lock.revision.slice(0, 12)}-${digest}`);
+  const destination = await dawnInputs();
   await mkdir(downloads, { recursive: true });
   if(await ready(destination)) {
     console.log(`Dawn inputs already prepared at ${destination}`);

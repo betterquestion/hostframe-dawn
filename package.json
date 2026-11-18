@@ -5,7 +5,9 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "setup": "bun scripts/setup.ts",
-    "lint": "oxlint scripts"
+    "lint": "oxlint scripts test",
+    "build": "bun scripts/build.ts",
+    "test:compute": "bun scripts/test-compute.ts"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^6.0.1",

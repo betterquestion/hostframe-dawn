@@ -1,0 +1,52 @@
+--- a/src/dawn/node/Module.cpp
++++ b/src/dawn/node/Module.cpp
+@@ -31,7 +31,6 @@
+ #include <utility>
+ #include <vector>
+
+-#include "dawn/dawn_proc.h"
+ #include "src/dawn/node/binding/Flags.h"
+ #include "src/dawn/node/binding/GPU.h"
+
+@@ -103,9 +102,6 @@
+ // types into the global object, and adding the 'create' function on the exported
+ // object.
+ NAPI_MODULE_EXPORT Napi::Object Initialize(Napi::Env env, Napi::Object exports) {
+-    // Set all the Dawn procedure function pointers.
+-    dawnProcSetProcs(&dawn::native::GetProcs());
+-
+     // Register all the interop types
+     exports.Set(Napi::String::New(env, "globals"), wgpu::interop::Initialize(env));
+
+--- a/src/dawn/node/binding/AsyncRunner.cpp
++++ b/src/dawn/node/binding/AsyncRunner.cpp
+@@ -40,7 +40,7 @@
+     return runner;
+ }
+
+-AsyncRunner::AsyncRunner(dawn::native::Instance* instance) : instance_(instance) {}
++AsyncRunner::AsyncRunner(dawn::native::Instance* instance) : instance_(instance->Get()) {}
+
+ void AsyncRunner::Begin(Napi::Env env) {
+     DAWN_ASSERT(tasks_waiting_ != std::numeric_limits<decltype(tasks_waiting_)>::max());
+@@ -79,7 +79,7 @@
+                                     }
+
+                                     self->process_events_queued_ = false;
+-                                    wgpuInstanceProcessEvents(self->instance_->Get());
++                                    self->instance_.ProcessEvents();
+                                     self->ScheduleProcessEvents(env);
+                                 }),
+         });
+--- a/src/dawn/node/binding/AsyncRunner.h
++++ b/src/dawn/node/binding/AsyncRunner.h
+@@ -71,7 +71,8 @@
+     void ScheduleProcessEvents(Napi::Env env);
+
+     std::weak_ptr<AsyncRunner> weak_this_;
+-    const dawn::native::Instance* const instance_;
++    // Child bindings can outlive the JavaScript GPU that created them.
++    const wgpu::Instance instance_;
+     uint64_t tasks_waiting_ = 0;
+     bool process_events_queued_ = false;
+ };
