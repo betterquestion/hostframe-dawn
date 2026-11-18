@@ -63,8 +63,10 @@ provides Mesa's Vulkan drivers, including a software driver.
 Run `bun run test:abi` after building to check the C entry point in
 `include/hostframe_dawn/bridge.h`. The native fixture resolves
 `hostframe_dawn_get_api` from the `dawn.node` JavaScript loaded and checks
-version negotiation in Node and Bun. The v1 table currently reports its
-version and size.
+version negotiation and handle access in Node and Bun using Vulkan.
+The v1 table can acquire the native instance and device from genuine Dawn
+`GPU` and `GPUDevice` objects. Each successful acquisition transfers one
+reference to the caller, which releases it through the matching table entry.
 
 For the Linux/X11 presentation fixture, also install the X11 development
 headers and Xvfb:

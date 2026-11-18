@@ -1,0 +1,76 @@
+--- a/src/dawn/node/binding/GPU.h
++++ b/src/dawn/node/binding/GPU.h
+@@ -43,6 +43,7 @@
+ class GPU final : public interop::GPU {
+   public:
+     explicit GPU(Flags flags);
++    WGPUInstance GetNativeInstance() const { return instance_->Get(); }
+
+     // interop::GPU interface compliance
+     interop::Promise<std::optional<interop::Interface<interop::GPUAdapter>>> requestAdapter(
+--- a/src/dawn/node/binding/GPUDevice.h
++++ b/src/dawn/node/binding/GPUDevice.h
+@@ -63,6 +63,7 @@
+     ~GPUDevice() override;
+
+     void ForceLoss(wgpu::DeviceLostReason reason, const char* message);
++    WGPUDevice GetNativeDevice() const { return device_.Get(); }
+
+     // interop::GPUDevice interface compliance
+     interop::Interface<interop::GPUSupportedFeatures> getFeatures(Napi::Env) override;
+--- a/src/dawn/node/interop/WebGPU.cpp.tmpl
++++ b/src/dawn/node/interop/WebGPU.cpp.tmpl
+@@ -169,6 +169,13 @@
+ {{-  $methods    := FlattenedMethodsOf    $ }}
+ {{-  if IsInterface $}}
+     std::unique_ptr<{{$.Name}}> impl;
++{{-  if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}
++    static napi_type_tag BridgeTag() {
++      // Include the address of this module's marker to distinguish loaded copies.
++      return {reinterpret_cast<uintptr_t>(&kInternalConstructionMarker),
++              {{if eq $.Name "GPU"}}1{{else}}2{{end}}};
++    }
++{{-  end}}
+ {{-  end}}
+ {{-  if and (IsInterface $) ($.Inherits) }}
+     // This class inherits from another, require the class factory to
+@@ -424,11 +431,23 @@
+
+ {{-  if not (HasAnnotation $ "ManualImplementation")}}
+ {{$.Name}}* {{$.Name}}::Unwrap(Napi::Object object) {
++{{- if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}
++  const auto tag = Wrappers::W{{$.Name}}::BridgeTag();
++  const auto env = object.Env();
++  bool matches = false;
++  void* wrapper = nullptr;
++  if (napi_check_object_type_tag(env, object, &tag, &matches) != napi_ok || !matches ||
++      napi_unwrap(env, object, &wrapper) != napi_ok || !wrapper) {
++    return nullptr;
++  }
++  return static_cast<Wrappers::W{{$.Name}}*>(wrapper)->impl.get();
++{{- else}}
+   auto* wrappers = Wrappers::For(object.Env());
+   if (!object.InstanceOf(wrappers->{{$.Name}}_ctor.Value())) {
+     return nullptr;
+   }
+   return Wrappers::W{{$.Name}}::Unwrap(object)->impl.get();
++{{- end}}
+ }
+
+ Interface<{{$.Name}}> {{$.Name}}::Bind(Napi::Env env, std::unique_ptr<{{$.Name}}>&& impl) {
+@@ -437,5 +456,15 @@
+   auto object = wrappers->{{$.Name}}_ctor.New({
+     Napi::External<void>::New(env, &kInternalConstructionMarker)
+   });
++{{- if or (eq $.Name "GPU") (eq $.Name "GPUDevice")}}
++  if (object.IsEmpty()) {
++    return {};
++  }
++  const auto tag = Wrappers::W{{$.Name}}::BridgeTag();
++  if (napi_type_tag_object(env, object, &tag) != napi_ok) {
++    Napi::Error::New(env, "Could not tag Dawn {{$.Name}}").ThrowAsJavaScriptException();
++    return {};
++  }
++{{- end}}
+   auto* wrapper = Wrappers::W{{$.Name}}::Unwrap(object);
+   wrapper->impl = std::move(impl);

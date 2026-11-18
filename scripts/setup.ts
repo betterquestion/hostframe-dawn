@@ -2,7 +2,7 @@ import { $ } from "bun";
 import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import lock from "../dawn.lock.json";
-import { build, dawnInputs, root } from "./dawn-inputs";
+import { bridgeWrappersPatch, build, dawnInputs, root } from "./dawn-inputs";
 
 const downloads = join(build, "downloads");
 const inputs = [...lock.archives, ...lock.git];
@@ -120,6 +120,7 @@ async function prepare() {
     for(const dependency of lock.git) {
       await checkout(join(staging, dependency.path), dependency);
     }
+    await $`git apply --no-index ${bridgeWrappersPatch}`.cwd(join(staging, "source"));
     await generate(staging);
     if(!await ready(staging)) throw new Error("Setup did not produce every required Dawn input.");
     try {
