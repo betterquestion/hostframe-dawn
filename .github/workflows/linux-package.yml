@@ -53,6 +53,7 @@ jobs:
       - run: bun run test:package
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         with:
           name: hostframe-dawn-linux-x64
           path: |
@@ -60,3 +61,40 @@ jobs:
             build/package/hostframe-dawn-linux-x64.tar.gz.sha256
           if-no-files-found: error
           compression-level: 0
+          retention-days: 1
+
+  publish-release:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: linux-package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: linux-package-release-${{ github.sha }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: hostframe-dawn-linux-x64
+
+      - name: Publish Linux package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          archive=hostframe-dawn-linux-x64.tar.gz
+          sha256sum --check "$archive.sha256"
+          tag="linux-x64-$GITHUB_SHA"
+
+          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
+            if [ "$draft" = false ]; then
+              exit 0
+            fi
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --draft \
+              --title "Hostframe Dawn Linux x64 (${GITHUB_SHA:0:12})" \
+              --notes "Linux x86-64 package built and tested from commit $GITHUB_SHA."
+          fi
+
+          gh release upload "$tag" "$archive" "$archive.sha256" --clobber
+          gh release edit "$tag" --draft=false --latest

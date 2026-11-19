@@ -106,14 +106,18 @@ The Linux packaging workflow targets Ubuntu 24.04 x86-64 and uses Mesa's
 software Vulkan driver. Run the same job locally with Act and Docker:
 
 ```sh
-act push -j linux-package \
+act pull_request -j linux-package \
   -P ubuntu-24.04=catthehacker/ubuntu:act-24.04 \
-  --container-daemon-socket - \
-  --artifact-server-path "$PWD/build/act-artifacts"
+  --container-daemon-socket -
 ```
 
-GitHub Actions makes the archive and checksum available as a workflow artifact.
-Act stores the upload in the local artifact directory.
+After a successful build and package test on `main`, GitHub Actions publishes
+the archive and its checksum on the [Releases page](https://github.com/betterquestion/hostframe-dawn/releases).
+Each release uses the tag `linux-x64-<full commit SHA>` so consumers can pin a
+specific build. The [latest release](https://github.com/betterquestion/hostframe-dawn/releases/latest)
+also provides stable download links for the
+[archive](https://github.com/betterquestion/hostframe-dawn/releases/latest/download/hostframe-dawn-linux-x64.tar.gz)
+and its [SHA-256 checksum](https://github.com/betterquestion/hostframe-dawn/releases/latest/download/hostframe-dawn-linux-x64.tar.gz.sha256).
 
 ## Validate before integrating with Hostframe
 
