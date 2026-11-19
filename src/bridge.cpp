@@ -126,6 +126,34 @@ uint32_t DeviceTick(HostframeDawnDevice device) {
   return dawn::native::DeviceTick(device);
 }
 
+HostframeDawnDeviceStatus CheckDevice(HostframeDawnInstance expected_instance,
+                                     HostframeDawnDevice handle) {
+  if (!expected_instance || !handle) {
+    return HOSTFRAME_DAWN_DEVICE_QUERY_FAILED;
+  }
+  const wgpu::Device device(handle);
+  const auto adapter = device.GetAdapter();
+  if (!adapter) {
+    return HOSTFRAME_DAWN_DEVICE_QUERY_FAILED;
+  }
+  const auto instance = adapter.GetInstance();
+  if (!instance) {
+    return HOSTFRAME_DAWN_DEVICE_QUERY_FAILED;
+  }
+  if (instance.Get() != expected_instance) {
+    return HOSTFRAME_DAWN_DEVICE_WRONG_INSTANCE;
+  }
+
+  switch (instance.WaitAny(device.GetLostFuture(), 0)) {
+    case wgpu::WaitStatus::Success:
+      return HOSTFRAME_DAWN_DEVICE_LOST_OR_DESTROYED;
+    case wgpu::WaitStatus::TimedOut:
+      return HOSTFRAME_DAWN_DEVICE_USABLE;
+    default:
+      return HOSTFRAME_DAWN_DEVICE_QUERY_FAILED;
+  }
+}
+
 constexpr HostframeDawnApi api_v1 = {
     .abi_version = HOSTFRAME_DAWN_ABI_V1,
     .struct_size = sizeof(HostframeDawnApi),
@@ -149,6 +177,7 @@ constexpr HostframeDawnApi api_v1 = {
     .submit_cleanup = SubmitCleanup,
     .device_tick = DeviceTick,
     .device_destroy = wgpuDeviceDestroy,
+    .check_device = CheckDevice,
 };
 }
 

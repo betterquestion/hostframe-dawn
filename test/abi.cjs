@@ -1,7 +1,12 @@
 const assert = require("node:assert/strict");
 
 const [, , addon, fixture] = process.argv;
-const { negotiate, compareInstances, compareDevices, foreignWrapper } = require(fixture);
+const { negotiate, compareInstances, compareDevices, checkDevice, foreignWrapper } = require(fixture);
+
+const usable = 0;
+const wrongInstance = 1;
+const lostOrDestroyed = 2;
+const queryFailed = 3;
 
 assert.throws(() => negotiate(addon, 1), /must be loaded/);
 assert.throws(() => negotiate(fixture, 1), /does not export/);
@@ -54,13 +59,23 @@ async function checkHandles() {
       const buffer = device.createBuffer({ size: 4, usage: dawn.globals.GPUBufferUsage.COPY_DST });
       assert.equal(buffer.size, 4);
       buffer.destroy();
+
+      assert.equal(checkDevice(addon, gpu, device), usable);
+      assert.equal(checkDevice(addon, otherGpu, otherDevice), usable);
+      assert.equal(checkDevice(addon, gpu, otherDevice), wrongInstance);
+      assert.equal(checkDevice(addon, null, device), queryFailed);
+      assert.equal(checkDevice(addon, gpu, null), queryFailed);
+
+      // The fixture retains both native handles before calling back into JavaScript.
+      assert.equal(checkDevice(addon, gpu, device, () => device.destroy()), lostOrDestroyed);
+      assert.equal(checkDevice(addon, otherGpu, device), wrongInstance);
     } finally {
       otherDevice.destroy();
     }
   } finally {
     device.destroy();
   }
-  console.log("Dawn instance and device handles validated");
+  console.log("Dawn instance and device handles, ownership, and loss checks validated");
 }
 
 const timeout = setTimeout(() => {

@@ -67,6 +67,34 @@ Napi::Value CompareHandles(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(env, same);
 }
 
+Napi::Value CheckDevice(const Napi::CallbackInfo& info) {
+  const auto env = info.Env();
+  if (info.Length() < 3 || info.Length() > 4 || !info[0].IsString() ||
+      (info.Length() == 4 && !info[3].IsFunction())) {
+    throw Napi::TypeError::New(env, "Expected a module path, GPU, device, and optional callback");
+  }
+
+  const auto library = OpenAddon(env, info[0]);
+  const auto* api = GetApi(env, library, HOSTFRAME_DAWN_ABI_V1);
+  constexpr auto required_size = offsetof(HostframeDawnApi, check_device) +
+                                 sizeof(HostframeDawnApi::check_device);
+  if (!api || api->struct_size < required_size) {
+    throw Napi::Error::New(env, "Dawn bridge lacks check_device");
+  }
+
+  const std::unique_ptr<WGPUInstanceImpl, decltype(api->release_instance)> instance(
+      api->acquire_instance(env, info[1]), api->release_instance);
+  const std::unique_ptr<WGPUDeviceImpl, decltype(api->release_device)> device(
+      api->acquire_device(env, info[2]), api->release_device);
+  if (info.Length() == 4) {
+    if (!instance || !device) {
+      throw Napi::Error::New(env, "Could not retain the Dawn handles before the callback");
+    }
+    info[3].As<Napi::Function>().Call({});
+  }
+  return Napi::Number::New(env, api->check_device(instance.get(), device.get()));
+}
+
 Napi::Value ForeignWrapper(const Napi::CallbackInfo& info) {
   static int payload = 0;
   const auto env = info.Env();
@@ -83,6 +111,7 @@ Napi::Object Initialize(Napi::Env env, Napi::Object exports) {
       env, CompareHandles<&HostframeDawnApi::acquire_instance, &HostframeDawnApi::release_instance>));
   exports.Set("compareDevices", Napi::Function::New(
       env, CompareHandles<&HostframeDawnApi::acquire_device, &HostframeDawnApi::release_device>));
+  exports.Set("checkDevice", Napi::Function::New(env, CheckDevice));
   exports.Set("foreignWrapper", Napi::Function::New(env, ForeignWrapper));
 #ifdef HOSTFRAME_DAWN_X11
   fixture::ExportX11Surface(env, exports);

@@ -67,6 +67,11 @@ version negotiation and handle access in Node and Bun using Vulkan.
 The v1 table can acquire the native instance and device from genuine Dawn
 `GPU` and `GPUDevice` objects. Each successful acquisition transfers one
 reference to the caller, which releases it through the matching table entry.
+The optional v1 `check_device` entry checks whether a retained device belongs to
+the expected instance and whether it has been lost or destroyed. The ABI fixture
+checks ordinary JavaScript-created devices, a device from a second instance,
+and a device destroyed immediately before the check while the native handles
+remain retained. See the public header for the required table size check.
 
 For the Linux/X11 presentation fixture, also install the X11 development
 headers and Xvfb:

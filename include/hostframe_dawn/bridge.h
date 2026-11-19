@@ -1,6 +1,7 @@
 #ifndef HOSTFRAME_DAWN_BRIDGE_H
 #define HOSTFRAME_DAWN_BRIDGE_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <node_api.h>
 #include <webgpu/webgpu.h>
@@ -13,6 +14,14 @@ extern "C" {
 
 typedef struct WGPUInstanceImpl* HostframeDawnInstance;
 typedef struct WGPUDeviceImpl* HostframeDawnDevice;
+
+typedef uint32_t HostframeDawnDeviceStatus;
+enum {
+  HOSTFRAME_DAWN_DEVICE_USABLE = 0,
+  HOSTFRAME_DAWN_DEVICE_WRONG_INSTANCE = 1,
+  HOSTFRAME_DAWN_DEVICE_LOST_OR_DESTROYED = 2,
+  HOSTFRAME_DAWN_DEVICE_QUERY_FAILED = 3,
+};
 
 typedef struct HostframeDawnApi {
   uint32_t abi_version;
@@ -65,6 +74,19 @@ typedef struct HostframeDawnApi {
   void (*submit_cleanup)(HostframeDawnInstance instance, HostframeDawnDevice device);
   uint32_t (*device_tick)(HostframeDawnDevice device);
   WGPUProcDeviceDestroy device_destroy;
+
+  /*
+   * On the JavaScript thread, borrow two retained handles from this loaded
+   * addon for the duration of the call. Check ownership first, then poll the
+   * device's lost future with zero timeout. This is synchronous and submits
+   * no queue work. NULL handles report QUERY_FAILED. USABLE covers ownership
+   * and loss only. Query surface capabilities separately for presentation.
+   * Before reading this field from a v1 table, require struct_size >=
+   * offsetof(HostframeDawnApi, check_device) + sizeof(api->check_device),
+   * where api is the table pointer.
+   */
+  HostframeDawnDeviceStatus (*check_device)(HostframeDawnInstance expected_instance,
+                                           HostframeDawnDevice device);
 } HostframeDawnApi;
 
 /*
